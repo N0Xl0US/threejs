@@ -45,6 +45,7 @@ a:hover{
   letter-spacing: 0.3rem;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.5);
+  transition: text-shadow 0.3s ease-in-out;
 }
 
 .socials{

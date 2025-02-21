@@ -33,14 +33,14 @@ scene.fog = new THREE.Fog( 0x11151c, 1, 100 );
 scene.fog = new THREE.FogExp2(0x11151c, 0.14);
 
 var camera = new THREE.PerspectiveCamera( 45, window.innerWidth/window.innerHeight, 0.1, 1000 );
-camera.position.z = 10;
+camera.position.z = -10;
 camera.position.y = 0.2;
 
-const pointlight = new THREE.PointLight (0x85ccb8, 2, 20);
+const pointlight = new THREE.PointLight (0x85ccb8, 1, 20);
 pointlight.position.set (0,3,2);
 scene.add (pointlight);
 
-const pointlight2 = new THREE.PointLight (0x85ccb8, 2, 20);
+const pointlight2 = new THREE.PointLight (0x85ccb8, 1, 20);
 pointlight2.position.set (0,3,2);
 scene.add (pointlight2);
 
@@ -59,9 +59,11 @@ surf_imp.wrapS = THREE.RepeatWrapping;
 
 var mask_mat = new THREE.MeshPhysicalMaterial({
 color: 0xffffff,
-roughness: 1,
+roughness: 1.15,
 metalness: 1,
-roughnessMap: surf_imp});
+roughnessMap: surf_imp,
+side: THREE.DoubleSide
+});
 
 let mask;
 
@@ -97,43 +99,71 @@ bloomPass.radius = bloomparams.bloomRadius;
 const pixelPass = new ShaderPass( PixelShader );
 pixelPass.uniforms[ 'resolution' ].value = new THREE.Vector2( window.innerWidth, window.innerHeight );
 pixelPass.uniforms[ 'resolution' ].value.multiplyScalar( window.devicePixelRatio );
-pixelPass.uniforms[ 'pixelSize' ].value = 10;
+pixelPass.uniforms[ 'pixelSize' ].value = 7;
 
 composer = new EffectComposer( renderer );
 composer.addPass( renderScene );
 composer.addPass( afterimagePass );
 composer.addPass( bloomPass );
-composer.addPass( pixelPass );
+//composer.addPass( pixelPass );
 
 // RESIZE
 window.addEventListener( 'resize', onWindowResize );
 
-var theta1 = 0;
+// Add these variables at the global scope
+let mouseX = 0;
+let mouseY = 0;
+let targetX = 0;
+let targetY = 0;
+const windowHalfX = window.innerWidth / 2;
+const windowHalfY = window.innerHeight / 2;
 
-var update = function() {
-  theta1 += 0.007;
+// Add mouse move event listener
+document.addEventListener('mousemove', onDocumentMouseMove);
 
-  camera.position.x = Math.sin( theta1 ) * 2;
-  camera.position.y = 2.5*Math.cos( theta1 ) + 1;
-
-  pointlight.position.x = Math.sin( theta1+1 ) * 11;
-  pointlight.position.z = Math.cos( theta1+1 ) * 11;
-  pointlight.position.y = 2*Math.cos( theta1-3 ) +3;
-  
-  pointlight2.position.x = -Math.sin( theta1+1 ) * 11;
-  pointlight2.position.z = -Math.cos( theta1+1 ) * 11;
-  pointlight2.position.y = 2*-Math.cos( theta1-3 ) -6;
-
-	camera.lookAt( 0, 0, 0 );
+function onDocumentMouseMove(event) {
+    mouseX = (event.clientX - windowHalfX);
+    mouseY = (event.clientY - windowHalfY);
 }
 
+var update = function() {
+    // Smooth interpolation towards target
+    targetX = mouseX * .001;
+    targetY = mouseY * .001;
+    
+    // Update camera position
+    camera.position.x += (targetX - camera.position.x) * 0.05;
+    camera.position.y += (-targetY - camera.position.y) * 0.05;
+    camera.position.z = 10;
+    
+    // Rotate the mask model if it exists
+    if (mask) {
+        mask.rotation.y = targetX * 2; // Horizontal rotation
+        mask.rotation.x = targetY * 1; // Vertical rotation
+    }
+    
+    // Update lights to follow cursor but with larger movement
+    pointlight.position.x = mouseX * 0.02;
+    pointlight.position.y = -mouseY * 0.02;
+    pointlight.position.z = 2;
+    
+    pointlight2.position.x = -mouseX * 0.02;
+    pointlight2.position.y = mouseY * 0.02;
+    pointlight2.position.z = 2;
+
+    // Title glow animation based on cursor position
+    const title = document.querySelector('.title');
+    const glowIntensity = Math.abs(targetX + targetY) * 10;
+    title.style.textShadow = `0 0 ${glowIntensity}px rgba(133, 204, 184, 0.8)`;
+
+    camera.lookAt(0, 0, 0);
+}
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize( window.innerWidth, window.innerHeight );
 }
-
 
 function animate() {
   update();
